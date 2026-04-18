@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Singapore PQ Drafter</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f9; color: #1a1a2e; min-height: 100vh; }
+  header { background: #1a1a2e; color: white; padding: 18px 32px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 1.15rem; font-weight: 600; }
+  header .subtitle { font-size: 0.78rem; opacity: 0.55; margin-left: auto; }
+  .tabs { display: flex; background: #fff; border-bottom: 2px solid #e8e8e8; padding: 0 32px; }
+  .tab { padding: 14px 22px; font-size: 0.88rem; font-weight: 600; color: #888; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+  .tab:hover { color: #1a1a2e; }
+  .tab.active { color: #c0392b; border-bottom-color: #c0392b; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .container { max-width: 880px; margin: 0 auto; padding: 28px 20px; }
+  .card { background: white; border-radius: 12px; padding: 26px; margin-bottom: 22px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .card h2 { font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #c0392b; margin-bottom: 16px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 0.84rem; font-weight: 600; color: #444; margin-bottom: 5px; }
+  .field .hint { font-size: 0.74rem; color: #999; margin-bottom: 5px; }
+  .field input, .field textarea, .field select { width: 100%; padding: 10px 13px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 0.88rem; font-family: inherit; background: #fafafa; transition: border 0.2s; }
+  .field input:focus, .field textarea:focus, .field select:focus { outline: none; border-color: #1a1a2e; background: white; }
+  .field textarea { resize: vertical; min-height: 68px; }
+  .tone-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+  .tone-btn { padding: 11px 9px; border: 2px solid #ddd; border-radius: 8px; background: white; cursor: pointer; font-size: 0.81rem; font-weight: 600; color: #555; text-align: center; transition: all 0.2s; }
+  .tone-btn:hover { border-color: #1a1a2e; color: #1a1a2e; }
+  .tone-btn.active { border-color: #c0392b; background: #fff0ee; color: #c0392b; }
+  .escalation { display: grid; gap: 13px; }
+  .esc-item { border-left: 3px solid #1a1a2e; padding-left: 13px; }
+  .esc-item.b { border-color: #c0392b; }
+  .esc-item.c { border-color: #27ae60; }
+  .esc-label { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; color: #1a1a2e; }
+  .esc-item.b .esc-label { color: #c0392b; }
+  .esc-item.c .esc-label { color: #27ae60; }
+  .generate-btn { width: 100%; padding: 15px; background: #1a1a2e; color: white; border: none; border-radius: 10px; font-size: 0.98rem; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+  .generate-btn:hover { background: #c0392b; }
+  .generate-btn:disabled { background: #aaa; cursor: not-allowed; }
+  .output-card { background: #1a1a2e; color: #e8e8e8; border-radius: 12px; padding: 26px; margin-top: 22px; display: none; }
+  .output-card h2 { color: #f0a500; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 18px; }
+  .output-card .pq-title { color: #f0a500; font-weight: 700; font-size: 0.98rem; margin-bottom: 14px; }
+  .output-card .pq-body { font-size: 0.9rem; line-height: 1.85; white-space: pre-wrap; }
+  .output-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  .btn { padding: 10px 22px; border: none; border-radius: 8px; font-size: 0.84rem; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+  .btn-red { background: #c0392b; color: white; }
+  .btn-red:hover { background: #e74c3c; }
+  .btn-green { background: #27ae60; color: white; }
+  .btn-green:hover { background: #2ecc71; }
+  .btn-outline { background: transparent; color: #e8e8e8; border: 1.5px solid #555; }
+  .btn-outline:hover { background: #2a2a3e; }
+  .loading { text-align: center; color: #aaa; font-size: 0.88rem; padding: 18px 0; display: none; }
+  .spinner { display: inline-block; width: 17px; height: 17px; border: 2px solid #555; border-top-color: #f0a500; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 7px; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-msg { color: #e74c3c; font-size: 0.84rem; margin-top: 9px; display: none; }
+  .progress-bar { height: 3px; background: #eee; border-radius: 2px; margin-bottom: 22px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #1a1a2e, #c0392b); border-radius: 2px; transition: width 0.4s; }
+  .sheet-status { font-size: 0.8rem; margin-top: 8px; }
+  /* Past PQs */
+  .pq-filters { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; align-items: center; }
+  .pq-filters input, .pq-filters select { padding: 9px 12px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 0.84rem; font-family: inherit; background: white; }
+  .pq-filters input { flex: 1; min-width: 160px; }
+  .load-btn { padding: 9px 18px; background: #1a1a2e; color: white; border: none; border-radius: 8px; font-size: 0.84rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .load-btn:hover { background: #c0392b; }
+  .pq-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+  .pq-table th { background: #1a1a2e; color: white; padding: 10px 12px; text-align: left; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .pq-table td { padding: 10px 12px; border-bottom: 1px solid #eee; vertical-align: top; }
+  .pq-table tr:hover td { background: #f9f0f0; cursor: pointer; }
+  .ministry-badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; background: #e8f0ff; color: #1a1a2e; }
+  .status-badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
+  .status-done { background: #d4f5e0; color: #1a7a3a; }
+  .status-vet { background: #fff3cd; color: #856404; }
+  .status-pending { background: #f8d7da; color: #721c24; }
+  .pq-text-preview { max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #444; }
+  .pq-detail-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
+  .pq-detail-overlay.open { display: flex; }
+  .pq-detail-box { background: white; border-radius: 14px; padding: 28px; max-width: 680px; width: 90%; max-height: 85vh; overflow-y: auto; }
+  .pq-detail-box h3 { font-size: 1rem; color: #1a1a2e; margin-bottom: 14px; }
+  .pq-detail-box .meta { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .pq-detail-box .pq-full-text { background: #f4f6f9; border-radius: 8px; padding: 16px; font-size: 0.87rem; line-height: 1.8; white-space: pre-wrap; }
+  .pq-detail-box .research { margin-top: 14px; font-size: 0.8rem; color: #666; line-height: 1.6; }
+  .pq-detail-box .research a { color: #c0392b; word-break: break-all; }
+  .close-btn { margin-top: 18px; padding: 9px 20px; background: #1a1a2e; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+  .empty-state { text-align: center; padding: 40px; color: #aaa; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <span>🦁</span>
+  <h1>Singapore PQ Drafter · Mr Cai Yinzhou</h1>
+  <span class="subtitle">15th Parliament · Toa Payoh Central, Bishan–Toa Payoh GRC</span>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('draft', this)">✦ Draft New PQ</div>
+  <div class="tab" onclick="switchTab('past', this)">📋 Past PQs</div>
+  <div class="tab" onclick="switchTab('settings', this)">⚙ Settings</div>
+</div>
+
+<!-- DRAFT TAB -->
+<div class="tab-panel active" id="tab-draft">
+<div class="container">
+  <div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+
+  <div class="card">
+    <h2>1 · Target Ministry & Filing Details</h2>
+    <div class="field">
+      <label>Ministry</label>
+      <select id="ministry" onchange="updateProgress()">
+        <option value="">— Select a Ministry —</option>
+        <option value="the Prime Minister">Prime Minister's Office</option>
+        <option value="the Minister for Communications and Information">Communications and Information</option>
+        <option value="the Minister for Culture, Community and Youth">Culture, Community and Youth</option>
+        <option value="the Minister for Defence">Defence</option>
+        <option value="the Minister for Digital Development and Information">Digital Development and Information</option>
+        <option value="the Minister for Education">Education</option>
+        <option value="the Minister for Finance">Finance</option>
+        <option value="the Minister for Foreign Affairs">Foreign Affairs</option>
+        <option value="the Minister for Health">Health</option>
+        <option value="the Minister for Home Affairs">Home Affairs</option>
+        <option value="the Minister for Law">Law</option>
+        <option value="the Minister for Manpower">Manpower</option>
+        <option value="the Minister for National Development">National Development</option>
+        <option value="the Minister for Social and Family Development">Social and Family Development</option>
+        <option value="the Minister for Sustainability and the Environment">Sustainability and the Environment</option>
+        <option value="the Minister for Trade and Industry">Trade and Industry</option>
+        <option value="the Minister for Transport">Transport</option>
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="field" style="margin-bottom:0">
+        <label>Type</label>
+        <select id="pqType"><option value="Oral">Oral</option><option value="Written">Written</option></select>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>Sitting</label>
+        <input type="text" id="sitting" placeholder="e.g. 7 Apr, Feb D1">
+      </div>
+    </div>
+    <div class="field" style="margin-top:14px;">
+      <label>Website Section / Topic Tag</label>
+      <input type="text" id="websiteSection" placeholder="e.g. YZforHealth, Mental Health, Age Well SG">
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2 · Issue & Evidence</h2>
+    <div class="field">
+      <label>Issue / Concern</label>
+      <div class="hint">What is the core problem? Be specific.</div>
+      <textarea id="issue" placeholder="e.g. Rising out-of-pocket costs for chronic disease patients under MediShield Life" oninput="updateProgress()"></textarea>
+    </div>
+    <div class="field">
+      <label>Trigger / Evidence <span style="font-weight:400;color:#bbb">(optional but recommended)</span></label>
+      <div class="hint">Cite a statistic, news report, resident feedback, or policy announcement</div>
+      <textarea id="trigger" placeholder="e.g. A 2024 MOH report noted that 1 in 3 patients with chronic conditions faced increasing co-payment burdens"></textarea>
+    </div>
+    <div class="field">
+      <label>Research / Article Links</label>
+      <input type="text" id="researchLinks" placeholder="e.g. https://straitstimes.com/...">
+    </div>
+    <div class="field">
+      <label>Specific Schemes / Acts to Reference</label>
+      <input type="text" id="schemes" placeholder="e.g. MediShield Life, CHAS, MediFund">
+    </div>
+    <div class="field">
+      <label>Internal Notes / Comments</label>
+      <textarea id="comments" placeholder="Context, prior PQs on this topic, drafter notes…" style="min-height:54px;"></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>3 · Tone & Framing</h2>
+    <div class="tone-grid">
+      <button class="tone-btn active" onclick="selectTone(this, 'Constructive and forward-looking — asking about programme uptake, enhancements, and how residents can benefit')">🤝 Constructive</button>
+      <button class="tone-btn" onclick="selectTone(this, 'Critical but respectful — citing disparities or data gaps, asking whether policies are sufficient, implying need for review')">🔍 Critical</button>
+      <button class="tone-btn" onclick="selectTone(this, 'Data-seeking — focused on obtaining specific statistics, figures, and information not yet publicly available')">📊 Data-Seeking</button>
+      <button class="tone-btn" onclick="selectTone(this, 'Policy-pushing — explicitly asking the government to consider, review, or implement new measures or policies')">🚀 Policy-Pushing</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>4 · 3-Part Escalation Logic</h2>
+    <div class="escalation">
+      <div class="esc-item a">
+        <div class="esc-label">Part (a) — Facts & Data</div>
+        <div class="field" style="margin-bottom:0">
+          <div class="hint">What data or facts do you want on public record?</div>
+          <textarea id="partA" placeholder="e.g. How many patients with chronic conditions have seen an increase in out-of-pocket costs under MediShield Life" oninput="updateProgress()"></textarea>
+        </div>
+      </div>
+      <div class="esc-item b">
+        <div class="esc-label">Part (b) — Causal / Evaluative</div>
+        <div class="field" style="margin-bottom:0">
+          <div class="hint">e.g. "whether current measures are sufficient…"</div>
+          <textarea id="partB" placeholder="e.g. Whether current CHAS subsidies are sufficient to address the affordability gap" oninput="updateProgress()"></textarea>
+        </div>
+      </div>
+      <div class="esc-item c">
+        <div class="esc-label">Part (c) — Forward Policy Ask</div>
+        <div class="field" style="margin-bottom:0">
+          <div class="hint">What action or policy change are you pushing for?</div>
+          <textarea id="partC" placeholder="e.g. What additional steps the Ministry will consider to reduce out-of-pocket costs" oninput="updateProgress()"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="generate-btn" id="genBtn" onclick="generatePQ()">✦ Generate Parliamentary Question</button>
+  <div class="error-msg" id="errorMsg"></div>
+
+  <div class="output-card" id="outputCard">
+    <h2>✦ Generated Parliamentary Question</h2>
+    <div class="pq-title" id="pqTitle"></div>
+    <div class="pq-body" id="pqBody"></div>
+    <div class="output-actions">
+      <button class="btn btn-red" onclick="copyPQ()">Copy PQ</button>
+      <button class="btn btn-green" onclick="saveToSheet()">💾 Save to Sheet</button>
+      <button class="btn btn-outline" onclick="generatePQ()">↺ Regenerate</button>
+    </div>
+    <div class="sheet-status" id="sheetStatus"></div>
+  </div>
+  <div class="loading" id="loading"><span class="spinner"></span> Drafting your PQ using 15th Parliament patterns…</div>
+</div>
+</div>
+
+<!-- PAST PQs TAB -->
+<div class="tab-panel" id="tab-past">
+<div class="container">
+  <div class="card">
+    <h2>📋 Past PQs · POT Sheet</h2>
+    <div class="pq-filters">
+      <input type="text" id="searchFilter" placeholder="Search questions or topics…" oninput="filterPQs()">
+      <select id="ministryFilter" onchange="filterPQs()">
+        <option value="">All Ministries</option>
+        <option value="MOE">MOE</option><option value="MOH">MOH</option>
+        <option value="MHA">MHA</option><option value="MSF">MSF</option>
+        <option value="MND">MND</option><option value="MOT">MOT</option>
+        <option value="MSE">MSE</option><option value="MOM">MOM</option>
+        <option value="MTI">MTI</option><option value="MinLaw">MinLaw</option>
+        <option value="PMO">PMO</option>
+      </select>
+      <select id="statusFilter" onchange="filterPQs()">
+        <option value="">All Statuses</option>
+        <option value="Vetting Completed">Vetting Completed</option>
+        <option value="Ready to Vet">Ready to Vet</option>
+        <option value="Pending Research">Pending Research</option>
+      </select>
+      <button class="load-btn" onclick="loadSheet()">↻ Refresh</button>
+    </div>
+    <div id="pastPQsContainer"><div class="empty-state">Click <strong>Refresh</strong> to load PQs from the Google Sheet</div></div>
+  </div>
+</div>
+</div>
+
+<!-- SETTINGS TAB -->
+<div class="tab-panel" id="tab-settings">
+<div class="container">
+  <div class="card" style="border:1.5px solid #f0a500;background:#fffdf0;">
+    <h2 style="color:#b8860b;">⚙ Configuration</h2>
+    <div class="field">
+      <label>Anthropic API Key</label>
+      <div class="hint">Required when using outside Claude.ai. Session only — never stored. Get one at <a href="https://console.anthropic.com" target="_blank" style="color:#c0392b;">console.anthropic.com</a></div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="password" id="apiKey" placeholder="sk-ant-..." style="flex:1;" oninput="checkApiKey()">
+        <button onclick="toggleKey()" id="toggleBtn" style="padding:10px 14px;border:1.5px solid #ddd;border-radius:8px;background:white;cursor:pointer;font-size:0.8rem;white-space:nowrap;">Show</button>
+      </div>
+      <div id="apiStatus" style="font-size:0.78rem;margin-top:6px;color:#888;">No key entered — using Claude.ai session auth</div>
+    </div>
+    <div class="field">
+      <label>Google Sheet ID</label>
+      <div class="hint">From your sheet URL. Must be public (Anyone with link → Viewer).</div>
+      <input type="text" id="sheetId" value="11EIzKw4jjXAHiDy_vs02jXXNT8sdDnQ-0zghR9Lwiuw">
+    </div>
+    <div class="field">
+      <label>Google Apps Script URL <span style="font-weight:400;color:#bbb">(for saving new PQs back to sheet)</span></label>
+      <div class="hint"><a href="#" onclick="showScriptHelp();return false;" style="color:#c0392b;">How to set this up →</a></div>
+      <input type="text" id="scriptUrl" placeholder="https://script.google.com/macros/s/…/exec">
+    </div>
+    <button onclick="saveSettings()" style="padding:10px 22px;background:#1a1a2e;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Save Settings</button>
+    <span id="settingsSaved" style="display:none;color:#27ae60;font-size:0.82rem;margin-left:12px;">✓ Saved</span>
+  </div>
+
+  <div class="card" id="scriptHelpCard" style="display:none;">
+    <h2>How to Enable Save-to-Sheet</h2>
+    <p style="font-size:0.86rem;line-height:1.7;color:#444;margin-bottom:14px;">
+      1. Open your Google Sheet → <strong>Extensions → Apps Script</strong><br>
+      2. Paste this script, replace <code>YOUR_SHEET_ID</code>, click <strong>Save</strong><br>
+      3. Click <strong>Deploy → New Deployment → Web App</strong><br>
+      4. Set "Execute as: Me" and "Who has access: Anyone" → Deploy<br>
+      5. Copy the Web App URL and paste it above
+    </p>
+    <pre id="appsScriptCode" style="background:#1a1a2e;color:#f0a500;padding:16px;border-radius:8px;font-size:0.78rem;overflow-x:auto;white-space:pre;">function doPost(e) {
+  var sheet = SpreadsheetApp
+    .openById('YOUR_SHEET_ID')
+    .getSheetByName('POT');
+  var d = JSON.parse(e.postData.contents);
+  sheet.appendRow([
+    '', d.ministry, d.websiteSection, '', d.sitting,
+    d.type, 'Ready to Vet', d.question, d.wordCount,
+    '', d.comments, '', d.research, '', ''
+  ]);
+  return ContentService
+    .createTextOutput(JSON.stringify({status:'ok'}))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+function doGet() {
+  return ContentService.createTextOutput('PQ Drafter Active');
+}</pre>
+    <button onclick="copyScript()" style="margin-top:10px;padding:8px 16px;background:#c0392b;color:white;border:none;border-radius:6px;cursor:pointer;font-size:0.82rem;">Copy Script</button>
+  </div>
+</div>
+</div>
+
+<!-- Detail Overlay -->
+<div class="pq-detail-overlay" id="pqDetailOverlay" onclick="closeDetailClick(event)">
+  <div class="pq-detail-box">
+    <div class="meta" id="detailMeta"></div>
+    <h3 id="detailTitle"></h3>
+    <div class="pq-full-text" id="detailBody"></div>
+    <div class="research" id="detailResearch"></div>
+    <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;">
+      <button class="close-btn" onclick="closeOverlay()">Close</button>
+      <button class="close-btn" style="background:#27ae60;" onclick="useAsDraft()">Use as Draft Basis</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let selectedTone = 'Constructive and forward-looking';
+let allPQs = [];
+let currentDetail = null;
+let lastGeneratedPQ = null;
+
+// Settings
+function loadSettings() {
+  const sid = localStorage.getItem('pq_sheetId');
+  const surl = localStorage.getItem('pq_scriptUrl');
+  if (sid) document.getElementById('sheetId').value = sid;
+  if (surl) document.getElementById('scriptUrl').value = surl;
+}
+function saveSettings() {
+  localStorage.setItem('pq_sheetId', document.getElementById('sheetId').value.trim());
+  localStorage.setItem('pq_scriptUrl', document.getElementById('scriptUrl').value.trim());
+  const el = document.getElementById('settingsSaved');
+  el.style.display = 'inline';
+  setTimeout(() => el.style.display = 'none', 2500);
+}
+
+// Tabs
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (tab === 'past' && allPQs.length === 0) loadSheet();
+}
+
+// API Key
+function checkApiKey() {
+  const key = document.getElementById('apiKey').value.trim();
+  const status = document.getElementById('apiStatus');
+  if (!key) { status.textContent = 'No key — using Claude.ai session auth'; status.style.color = '#888'; }
+  else if (key.startsWith('sk-ant-')) { status.textContent = '✓ Valid key — ready for self-hosted use'; status.style.color = '#27ae60'; }
+  else { status.textContent = '⚠ Key should start with sk-ant-'; status.style.color = '#e67e22'; }
+}
+function toggleKey() {
+  const input = document.getElementById('apiKey');
+  const btn = document.getElementById('toggleBtn');
+  input.type = input.type === 'password' ? 'text' : 'password';
+  btn.textContent = input.type === 'password' ? 'Show' : 'Hide';
+}
+
+// Tone
+function selectTone(btn, tone) {
+  document.querySelectorAll('.tone-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedTone = tone;
+}
+
+// Progress
+function updateProgress() {
+  const fields = ['ministry', 'issue', 'partA', 'partB', 'partC'];
+  const filled = fields.filter(id => document.getElementById(id).value.trim()).length;
+  document.getElementById('progress').style.width = (filled / fields.length * 100) + '%';
+}
+
+// Generate
+async function generatePQ() {
+  const ministry = document.getElementById('ministry').value.trim();
+  const issue = document.getElementById('issue').value.trim();
+  const trigger = document.getElementById('trigger').value.trim();
+  const schemes = document.getElementById('schemes').value.trim();
+  const partA = document.getElementById('partA').value.trim();
+  const partB = document.getElementById('partB').value.trim();
+  const partC = document.getElementById('partC').value.trim();
+  if (!ministry || !issue || !partA) {
+    const e = document.getElementById('errorMsg');
+    e.textContent = 'Please fill in: Ministry, Issue, and Part (a).';
+    e.style.display = 'block'; return;
+  }
+  document.getElementById('errorMsg').style.display = 'none';
+  document.getElementById('genBtn').disabled = true;
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('outputCard').style.display = 'none';
+
+  const prompt = `You are an expert drafter of Singapore Parliamentary Questions (PQs) for the 15th Parliament.
+
+Draft a PQ using EXACTLY this format used in the Singapore Hansard:
+
+TITLE: [Short noun-phrase title, specific and descriptive, max 12 words]
+
+QUESTION:
+Mr Cai Yinzhou (Toa Payoh Central) asked ${ministry} —
+(a) [Part a question]${partB ? '\n(b) [Part b question]' : ''}${partC ? '\n(c) [Part c question]' : ''}
+
+Inputs:
+- Issue/concern: ${issue}
+${trigger ? '- Trigger/evidence: ' + trigger : ''}
+${schemes ? '- Schemes/acts to name: ' + schemes : ''}
+- Tone: ${selectedTone}
+- Part (a) intent: ${partA}
+${partB ? '- Part (b) intent: ' + partB : ''}
+${partC ? '- Part (c) intent: ' + partC : ''}
+
+Rules:
+1. Formal parliamentary register — no contractions
+2. Each sub-part is a complete, self-contained question
+3. Reference named Singapore schemes/acts where relevant
+4. Preamble (if used) must cite the concrete trigger
+5. Do NOT presuppose the answer
+6. Output ONLY the TITLE and QUESTION — nothing else
+
+Begin with "TITLE:"`;
+
+  try {
+    const apiKey = document.getElementById('apiKey').value.trim();
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['x-api-key'] = apiKey;
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST', headers,
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await res.json();
+    const text = data.content.map(i => i.text || '').join('\n').trim();
+    const titleMatch = text.match(/TITLE:\s*(.+)/i);
+    const questionMatch = text.match(/QUESTION:\s*([\s\S]+)/i);
+    const title = titleMatch ? titleMatch[1].trim() : 'Parliamentary Question';
+    const body = questionMatch ? questionMatch[1].trim() : text;
+    lastGeneratedPQ = { title, body };
+    document.getElementById('pqTitle').textContent = title;
+    document.getElementById('pqBody').textContent = body;
+    document.getElementById('outputCard').style.display = 'block';
+    document.getElementById('sheetStatus').textContent = '';
+  } catch (err) {
+    document.getElementById('errorMsg').textContent = 'Error generating PQ. Please try again.';
+    document.getElementById('errorMsg').style.display = 'block';
+  }
+  document.getElementById('genBtn').disabled = false;
+  document.getElementById('loading').style.display = 'none';
+}
+
+// Copy
+function copyPQ() {
+  if (!lastGeneratedPQ) return;
+  navigator.clipboard.writeText('TITLE: ' + lastGeneratedPQ.title + '\n\nQUESTION:\n' + lastGeneratedPQ.body).then(() => {
+    const btn = event.target;
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => btn.textContent = 'Copy PQ', 2000);
+  });
+}
+
+// Save to Sheet
+async function saveToSheet() {
+  const scriptUrl = localStorage.getItem('pq_scriptUrl') || document.getElementById('scriptUrl').value.trim();
+  const status = document.getElementById('sheetStatus');
+  if (!scriptUrl) {
+    status.textContent = '⚠ No Apps Script URL set. Go to Settings tab to configure.';
+    status.style.color = '#e67e22'; return;
+  }
+  if (!lastGeneratedPQ) return;
+  const wordCount = lastGeneratedPQ.body.split(/\s+/).length;
+  const ministryEl = document.getElementById('ministry');
+  const ministryText = ministryEl.selectedOptions[0]?.text || '';
+  const payload = {
+    ministry: ministryText, websiteSection: document.getElementById('websiteSection').value.trim(),
+    sitting: document.getElementById('sitting').value.trim(), type: document.getElementById('pqType').value,
+    question: lastGeneratedPQ.body, wordCount,
+    comments: document.getElementById('comments').value.trim(),
+    research: document.getElementById('researchLinks').value.trim()
+  };
+  status.textContent = 'Saving to sheet…'; status.style.color = '#888';
+  try {
+    await fetch(scriptUrl, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' } });
+    status.textContent = '✓ Saved to Google Sheet!'; status.style.color = '#27ae60';
+  } catch (e) {
+    status.textContent = '⚠ Could not save. Check Apps Script URL in Settings.'; status.style.color = '#c0392b';
+  }
+}
+
+// Load Sheet
+async function loadSheet() {
+  const sheetId = localStorage.getItem('pq_sheetId') || document.getElementById('sheetId').value.trim() || '11EIzKw4jjXAHiDy_vs02jXXNT8sdDnQ-0zghR9Lwiuw';
+  const container = document.getElementById('pastPQsContainer');
+  container.innerHTML = '<div class="empty-state"><span class="spinner" style="display:inline-block;border-top-color:#c0392b;"></span> Loading from Google Sheet…</div>';
+  try {
+    const res = await fetch(`https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=0`);
+    if (!res.ok) throw new Error('Sheet not accessible');
+    const csv = await res.text();
+    allPQs = parseCSV(csv);
+    renderTable(allPQs);
+  } catch (e) {
+    container.innerHTML = `<div class="empty-state" style="color:#c0392b;">⚠ Could not load sheet.<br>Make sure it is shared: <strong>Anyone with link → Viewer</strong><br><small>${e.message}</small></div>`;
+  }
+}
+
+function parseCSV(csv) {
+  const lines = csv.split('\n');
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = splitCSVLine(lines[i]);
+    if (!cols[7] || cols[7].trim().length < 15) continue;
+    rows.push({
+      no: cols[0]?.trim(), ministry: cols[1]?.trim(), section: cols[2]?.trim(),
+      subsection: cols[3]?.trim(), sitting: cols[4]?.trim(), type: cols[5]?.trim(),
+      status: cols[6]?.trim(), question: cols[7]?.trim().replace(/^"|"$/g, ''),
+      words: cols[8]?.trim(), comments: cols[10]?.trim()?.replace(/^"|"$/g, ''),
+      research: cols[12]?.trim()
+    });
+  }
+  return rows;
+}
+
+function splitCSVLine(line) {
+  const result = []; let cur = '', inQuote = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQuote = !inQuote; }
+    else if (c === ',' && !inQuote) { result.push(cur); cur = ''; }
+    else { cur += c; }
+  }
+  result.push(cur);
+  return result;
+}
+
+function filterPQs() {
+  const search = document.getElementById('searchFilter').value.toLowerCase();
+  const min = document.getElementById('ministryFilter').value;
+  const stat = document.getElementById('statusFilter').value;
+  const filtered = allPQs.filter(pq =>
+    (!search || pq.question.toLowerCase().includes(search) || (pq.subsection||'').toLowerCase().includes(search)) &&
+    (!min || pq.ministry === min) &&
+    (!stat || pq.status === stat)
+  );
+  renderTable(filtered);
+}
+
+function renderTable(pqs) {
+  const container = document.getElementById('pastPQsContainer');
+  if (!pqs.length) { container.innerHTML = '<div class="empty-state">No PQs found.</div>'; return; }
+  let html = `<p style="font-size:0.8rem;color:#888;margin-bottom:12px;">${pqs.length} PQ${pqs.length!==1?'s':''} — click any row to view full text</p>
+  <div style="overflow-x:auto;"><table class="pq-table"><thead><tr>
+    <th>Ministry</th><th>Topic</th><th>Sitting</th><th>Type</th><th>Status</th><th>Preview</th>
+  </tr></thead><tbody>`;
+  pqs.forEach(pq => {
+    const idx = allPQs.indexOf(pq);
+    const sc = pq.status === 'Vetting Completed' ? 'status-done' : pq.status === 'Ready to Vet' ? 'status-vet' : 'status-pending';
+    html += `<tr onclick="showDetail(${idx})">
+      <td><span class="ministry-badge">${pq.ministry||'—'}</span></td>
+      <td style="font-size:0.79rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${pq.subsection||pq.section||'—'}</td>
+      <td style="font-size:0.79rem;white-space:nowrap;">${pq.sitting||'—'}</td>
+      <td style="font-size:0.79rem;">${pq.type||'—'}</td>
+      <td><span class="status-badge ${sc}">${pq.status||'—'}</span></td>
+      <td><div class="pq-text-preview">${pq.question}</div></td>
+    </tr>`;
+  });
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+}
+
+function showDetail(idx) {
+  currentDetail = allPQs[idx];
+  const pq = currentDetail;
+  const sc = pq.status === 'Vetting Completed' ? 'status-done' : pq.status === 'Ready to Vet' ? 'status-vet' : 'status-pending';
+  document.getElementById('detailMeta').innerHTML = `
+    <span class="ministry-badge">${pq.ministry||'—'}</span>
+    <span class="status-badge ${sc}">${pq.status||'—'}</span>
+    ${pq.type ? `<span style="font-size:0.78rem;color:#666;">${pq.type}</span>` : ''}
+    ${pq.sitting ? `<span style="font-size:0.78rem;color:#666;">📅 ${pq.sitting}</span>` : ''}
+    ${pq.words ? `<span style="font-size:0.78rem;color:#999;">${pq.words} words</span>` : ''}`;
+  document.getElementById('detailTitle').textContent = pq.subsection || pq.section || 'Parliamentary Question';
+  document.getElementById('detailBody').textContent = pq.question;
+  let extras = [];
+  if (pq.research) extras.push(`<strong>Research:</strong> <a href="${pq.research}" target="_blank">${pq.research.substring(0,80)}</a>`);
+  if (pq.comments) extras.push(`<strong>Notes:</strong> ${pq.comments.substring(0,300)}${pq.comments.length>300?'…':''}`);
+  document.getElementById('detailResearch').innerHTML = extras.join('<br><br>');
+  document.getElementById('pqDetailOverlay').classList.add('open');
+}
+
+function closeDetailClick(e) { if (e.target === document.getElementById('pqDetailOverlay')) closeOverlay(); }
+function closeOverlay() { document.getElementById('pqDetailOverlay').classList.remove('open'); }
+
+function useAsDraft() {
+  if (!currentDetail) return;
+  const map = {
+    'MOE':'the Minister for Education','MOH':'the Minister for Health','MHA':'the Minister for Home Affairs',
+    'MSF':'the Minister for Social and Family Development','MND':'the Minister for National Development',
+    'MOT':'the Minister for Transport','MSE':'the Minister for Sustainability and the Environment',
+    'MOM':'the Minister for Manpower','MTI':'the Minister for Trade and Industry',
+    'MinLaw':'the Minister for Law','PMO':'the Prime Minister'
+  };
+  const val = map[currentDetail.ministry];
+  if (val) document.getElementById('ministry').value = val;
+  document.getElementById('issue').value = currentDetail.subsection || '';
+  document.getElementById('comments').value = currentDetail.comments || '';
+  document.getElementById('researchLinks').value = currentDetail.research || '';
+  document.getElementById('sitting').value = currentDetail.sitting || '';
+  document.getElementById('pqType').value = currentDetail.type || 'Oral';
+  closeOverlay();
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===0));
+  document.querySelectorAll('.tab-panel').forEach((p,i) => p.classList.toggle('active', i===0));
+  updateProgress();
+  window.scrollTo(0,0);
+}
+
+function showScriptHelp() { document.getElementById('scriptHelpCard').style.display = 'block'; }
+function copyScript() {
+  navigator.clipboard.writeText(document.getElementById('appsScriptCode').textContent);
+  event.target.textContent = '✓ Copied!';
+  setTimeout(() => event.target.textContent = 'Copy Script', 2000);
+}
+
+loadSettings();
+</script>
+</body>
+</html>
